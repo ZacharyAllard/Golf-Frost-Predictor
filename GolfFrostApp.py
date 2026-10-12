@@ -22,13 +22,13 @@ coords = locations[selected_loc]
 @st.cache_data(ttl=1800)
 def get_combined_forecast(lat, lon, base_temp):
     headers = {
-        'User-Agent': 'NewSalemGolfFrostPredictor/4.2 (player@newsalemgolf.com)',
+        'User-Agent': 'NewSalemGolfFrostPredictor/4.7 (player@newsalemgolf.com)',
         'Accept': 'application/geo+json'
     }
     
     # --- STRATEGY A: PRIMARY LIVE CONNECTION (WEATHER.GOV) ---
     try:
-        base_url = "https://weather.gov"
+        base_url = "https://api.weather.gov"
         point_endpoint = f"{base_url}/points/{lat},{lon}"
         
         grid_response = requests.get(point_endpoint, headers=headers, timeout=5)
@@ -62,9 +62,8 @@ def get_combined_forecast(lat, lon, base_temp):
     except Exception:
         pass
 
-    # --- STRATEGY B: SECONDARY LIVE FAILOVER (OPEN-METEO) ---
+    # --- STRATEGY B: FIXED LIVE FAILOVER (OPEN-METEO) ---
     try:
-        # FULLY FIXED URL: Explicitly points to the proper API subdomain and parameter paths
         meteo_url = f"https://open-meteo.com{lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
         response = requests.get(meteo_url, timeout=5)
         
@@ -79,7 +78,6 @@ def get_combined_forecast(lat, lon, base_temp):
                 if day_name not in days_dict:
                     days_dict[day_name] = []
                 
-                # Convert Open-Meteo numeric weather codes: 0 = Clear, 1-3 = Fair/Cloudy
                 w_code = data['weather_code'][i]
                 sky_string = "Clear" if w_code in [0, 1, 2, 3] else "Mostly Cloudy"
                 
@@ -93,7 +91,7 @@ def get_combined_forecast(lat, lon, base_temp):
     except Exception:
         pass
 
-    # --- STRATEGY C: LOCAL EMULATION MODEL (NO INTERNET / DUAL DOWN) ---
+    # --- STRATEGY C: LOCAL EMULATION MODEL (OFFLINE FALLBACK) ---
     days_dict = {}
     now = datetime.now()
     for d_idx in range(3):
@@ -104,7 +102,6 @@ def get_combined_forecast(lat, lon, base_temp):
         for hour in range(24):
             dt = datetime(target_date.year, target_date.month, target_date.day, hour, 0)
             
-            # Simple diurnal model: Coldest at 6 AM, warmest at 3 PM
             if hour <= 6:
                 temp_factor = (hour / 6) * -3
             elif hour <= 15:
@@ -122,7 +119,7 @@ def get_combined_forecast(lat, lon, base_temp):
             }))
     return days_dict
 
-# Fetch processed structured data
+# Fetch processed data matrix
 days_dict = get_combined_forecast(coords["lat"], coords["lon"], coords["base_temp"])
 
 # Filter valid days with enough hourly slots remaining
