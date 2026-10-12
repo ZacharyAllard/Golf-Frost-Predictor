@@ -28,7 +28,7 @@ def get_combined_forecast(lat, lon, base_temp):
     
     # --- STRATEGY A: PRIMARY LIVE CONNECTION (WEATHER.GOV) ---
     try:
-        base_url = "https://api.weather.gov"
+        base_url = "https://api.weather.govx"
         point_endpoint = f"{base_url}/points/{lat},{lon}"
         
         grid_response = requests.get(point_endpoint, headers=headers, timeout=5)
