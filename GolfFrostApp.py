@@ -66,7 +66,7 @@ def get_combined_forecast(lat, lon, base_temp):
 
     # --- STRATEGY B: SECONDARY LIVE FAILOVER (OPEN-METEO) ---
     try:
-        meteo_url = f"https://open-meteo.com{lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
+        meteo_url = f"https://api.open-meteo.com/v1/forcast?latitude={lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
         response = requests.get(meteo_url, timeout=5)
         
         if response.status_code == 200:
