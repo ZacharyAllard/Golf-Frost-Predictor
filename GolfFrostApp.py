@@ -1,4 +1,3 @@
-
 import streamlit as st
 import requests
 from datetime import datetime, timedelta
@@ -23,7 +22,7 @@ coords = locations[selected_loc]
 @st.cache_data(ttl=1800)
 def get_combined_forecast(lat, lon, base_temp):
     headers = {
-        'User-Agent': 'NewSalemGolfFrostPredictor/4.0 (player@newsalemgolf.com)',
+        'User-Agent': 'NewSalemGolfFrostPredictor/4.1 (player@newsalemgolf.com)',
         'Accept': 'application/geo+json'
     }
     
@@ -41,7 +40,6 @@ def get_combined_forecast(lat, lon, base_temp):
             if weather_response.status_code == 200:
                 periods = weather_response.json()['properties']['periods']
                 
-                # Format into uniform internal app matrix format
                 days_dict = {}
                 for p in periods:
                     clean_time = p['startTime'][:-6] if len(p['startTime']) > 19 else p['startTime']
@@ -62,11 +60,11 @@ def get_combined_forecast(lat, lon, base_temp):
                     }))
                 return days_dict
     except Exception:
-        pass # Silently drop into Strategy B if weather.gov struggles
+        pass
 
     # --- STRATEGY B: SECONDARY LIVE FAILOVER (OPEN-METEO) ---
     try:
-        meteo_url = f"https://api.open-meteo.com/v1/forcast?latitude={lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
+        meteo_url = f"https://open-meteo.com{lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
         response = requests.get(meteo_url, timeout=5)
         
         if response.status_code == 200:
@@ -80,8 +78,7 @@ def get_combined_forecast(lat, lon, base_temp):
                 if day_name not in days_dict:
                     days_dict[day_name] = []
                 
-                # Convert Open-Meteo numeric weather codes to uniform app strings
-                # 0 = Clear, 1-3 = Partly Cloudy, Overcast
+                # Convert Open-Meteo numeric weather codes: 0 = Clear, 1-3 = Fair/Cloudy
                 w_code = data['weather_code'][i]
                 sky_string = "Clear" if w_code in [0, 1] else "Mostly Cloudy"
                 
@@ -93,7 +90,7 @@ def get_combined_forecast(lat, lon, base_temp):
                 }))
             return days_dict
     except Exception:
-        pass # Drop into local fallback model if the internet is completely out
+        pass
 
     # --- STRATEGY C: LOCAL EMULATION MODEL (NO INTERNET / DUAL DOWN) ---
     days_dict = {}
@@ -106,6 +103,7 @@ def get_combined_forecast(lat, lon, base_temp):
         for hour in range(24):
             dt = datetime(target_date.year, target_date.month, target_date.day, hour, 0)
             
+            # Simple diurnal model: Coldest at 6 AM, warmest at 3 PM
             if hour <= 6:
                 temp_factor = (hour / 6) * -3
             elif hour <= 15:
@@ -131,7 +129,7 @@ available_days = [day for day, items in days_dict.items() if len(items) >= 3][:3
 if not available_days:
     available_days = list(days_dict.keys())[:3]
 
-# 4. Day Selection Tabs
+# 4. Day Selection Controls
 st.markdown("### 📅 Select Day")
 selected_day = st.radio("Choose a day to check:", available_days, horizontal=True)
 day_periods = days_dict[selected_day]
