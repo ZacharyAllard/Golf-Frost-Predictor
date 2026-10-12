@@ -18,17 +18,17 @@ locations = {
 selected_loc = st.selectbox("🗺️ Choose Golf Region:", list(locations.keys()))
 coords = locations[selected_loc]
 
-# 3. Multi-Service Connection Engine
+# 3. Connection Engine
 @st.cache_data(ttl=1800)
 def get_combined_forecast(lat, lon, base_temp):
     headers = {
-        'User-Agent': 'NewSalemGolfFrostPredictor/4.7 (player@newsalemgolf.com)',
+        'User-Agent': 'NewSalemGolfFrostPredictor/5.0 (player@newsalemgolf.com)',
         'Accept': 'application/geo+json'
     }
     
     # --- STRATEGY A: PRIMARY LIVE CONNECTION (WEATHER.GOV) ---
     try:
-        base_url = "https://api.weather.govx"
+        base_url = "https://weather.gov"
         point_endpoint = f"{base_url}/points/{lat},{lon}"
         
         grid_response = requests.get(point_endpoint, headers=headers, timeout=5)
@@ -64,7 +64,8 @@ def get_combined_forecast(lat, lon, base_temp):
 
     # --- STRATEGY B: FIXED LIVE FAILOVER (OPEN-METEO) ---
     try:
-        meteo_url = f"https://open-meteo.com{lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
+        # ABSOLUTE PATH SPECIFICATION: Explicitly routes to api.open-meteo.com endpoints
+        meteo_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York&forecast_days=3"
         response = requests.get(meteo_url, timeout=5)
         
         if response.status_code == 200:
@@ -78,6 +79,7 @@ def get_combined_forecast(lat, lon, base_temp):
                 if day_name not in days_dict:
                     days_dict[day_name] = []
                 
+                # Maps standard WMO weather codes (0-3 mean Clear/Partly Cloudy)
                 w_code = data['weather_code'][i]
                 sky_string = "Clear" if w_code in [0, 1, 2, 3] else "Mostly Cloudy"
                 
